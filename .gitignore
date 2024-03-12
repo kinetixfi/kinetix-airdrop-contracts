@@ -1,0 +1,46 @@
+# Logs, caches, build artifacts
+logs/
+*.log
+.node_repl_history
+*.pid
+*.seed
+*.pid.lock
+build/
+coverage/
+.nyc_output/
+
+# Editor/IDE workspace settings
+.idea/
+*.code-workspace
+.vscode/
+
+# Project-specific temporary build directories
+.cache/
+.fusebox/
+.serverless/
+
+# Dependency directories
+node_modules/
+jspm_packages/
+bower_components/
+dist/
+
+# Optional, if you use TypeScript 
+typings/
+
+# Optional - if you have local environment config files 
+.env.local 
+
+# Optional, other temporary files
+.eslintcache
+.DS_Store
+.dynamodb/ 
+
+# Hardhat-specific ignores, if you don't want to track changes 
+artifacts/
+cache/
+
+# Ignore package lock files - your team should agree on package manager in use 
+yarn.lock
+pnpm-lock.yaml
+npm-debug.log* 
