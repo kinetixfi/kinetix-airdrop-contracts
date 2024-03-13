@@ -1,56 +1,82 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-abstract contract TokenDispenser is Ownable {
-    IERC20 public token; // Address of the token to be dispensed
+contract TokenDispenser is Ownable {
+    IERC20 public immutable token;
+    uint256 public immutable programId;
 
-    // Structure to hold recipient info based on your distribution logic
     struct Recipient {
-        uint256 amount;
-        uint256 lastClaimTimestamp; // If using time-based distribution
-        bool claimed; // If using simple claims
+        uint128 amount;
+        uint48 claimTimestamp;
+        bool claimed;
     }
 
     mapping(address => Recipient) public recipients;
 
-    // The Claim event helps off-chain applications understand
-    // what happens within your contract.
-    event Claim(address indexed _recepient, uint256 _amount);
+    event Claim(address indexed _recipient, uint256 _amount);
+    event AddRecipient(address indexed _recipient, uint256 _amount);
+    event Withdrawal(
+        address indexed _token,
+        address indexed _receiver,
+        uint256 _amount
+    );
 
-    constructor() {}
-
-    // Function to update token address (onlyOwner)
-    function updateToken(address _tokenAddress) external onlyOwner {
+    constructor(uint256 _programId, address _tokenAddress) Ownable(msg.sender) {
+        programId = _programId;
         token = IERC20(_tokenAddress);
     }
 
-    // Function to add tokens to the dispenser (onlyOwner)
     function fundDispenser(uint256 _amount) external onlyOwner {
         require(token.transferFrom(msg.sender, address(this), _amount));
     }
 
-    // Function to add recipients (onlyOwner)
-    function addRecipient(
-        address _recipient,
-        uint256 _amount
+    function addRecipients(
+        address[] calldata _recipients,
+        uint128[] calldata _amounts
     ) external onlyOwner {
-        recipients[_recipient] = Recipient(_amount, block.timestamp, false);
+        require(_recipients.length == _amounts.length, "Invalid array length");
+
+        for (uint256 i; i < _recipients.length; i++) {
+            address recipient = _recipients[i];
+            uint128 amount = _amounts[i];
+
+            require(recipients[recipient].amount == 0, "Already added");
+
+            recipients[recipient] = Recipient(
+                amount,
+                uint48(block.timestamp),
+                false
+            );
+
+            emit AddRecipient(recipient, amount);
+        }
     }
 
-    // Function for recipients to claim tokens (Implement your logic)
     function claimTokens() external {
         Recipient storage recipient = recipients[msg.sender];
-        // ... Add checks for eligibility based on your chosen mechanism
         require(recipient.amount > 0, "No tokens allocated");
         require(!recipient.claimed, "Already claimed");
 
         recipient.claimed = true;
+        recipient.claimTimestamp = uint48(block.timestamp);
+
         token.transfer(msg.sender, recipient.amount);
 
-        // Notify off-chain applications of the transfer.
         emit Claim(msg.sender, recipient.amount);
+    }
+
+    function withdrawEmergencyToken(
+        IERC20 _token,
+        address _receiver,
+        uint256 _amount
+    ) external onlyOwner {
+        require(address(_token) != address(0), "Zero token address");
+        require(_receiver != address(0), "Zero receiver address");
+        _token.transfer(_receiver, _amount);
+
+        emit Withdrawal(address(_token), _receiver, _amount);
     }
 }
