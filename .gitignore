@@ -30,6 +30,9 @@ typings/
 
 # Optional - if you have local environment config files 
 .env.local 
+.env*
+
+kava-fork/*
 
 # Optional, other temporary files
 .eslintcache
