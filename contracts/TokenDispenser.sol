@@ -8,6 +8,8 @@ contract TokenDispenser is Ownable {
     IERC20 public immutable token;
     uint256 public immutable programId;
 
+    uint256 public totalAmountToClaim;
+
     struct Recipient {
         uint128 amount;
         uint48 claimTimestamp;
@@ -46,6 +48,8 @@ contract TokenDispenser is Ownable {
 
         recipients[_recipient] = Recipient(_amount, uint48(block.timestamp), false);
 
+        totalAmountToClaim += _amount;
+
         emit AddRecipient(_recipient, _amount);
     }
 
@@ -57,6 +61,7 @@ contract TokenDispenser is Ownable {
         recipient.claimed = true;
         recipient.claimTimestamp = uint48(block.timestamp);
 
+        totalAmountToClaim -= recipient.amount;
         token.transfer(msg.sender, recipient.amount);
 
         emit Claim(msg.sender, recipient.amount);
@@ -65,6 +70,11 @@ contract TokenDispenser is Ownable {
     function withdrawEmergencyToken(IERC20 _token, address _receiver, uint256 _amount) external onlyOwner {
         require(address(_token) != address(0), "Zero token address");
         require(_receiver != address(0), "Zero receiver address");
+        if (_token == token) {
+            uint256 tokenBalance = IERC20(_token).balanceOf(address(this));
+            require(totalAmountToClaim + _amount <= tokenBalance, "Not allowed to withdraw users' funds");
+        }
+
         _token.transfer(_receiver, _amount);
 
         emit Withdrawal(address(_token), _receiver, _amount);
